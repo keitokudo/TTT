@@ -44,6 +44,7 @@ zsh env_setup.sh
 Download the model from the Hugging Face model hub to your local directory (`/work/pretrained_lms`):
 
 #+BEGIN_SRC bash
+cd /work/pretrained_lms
 HUGGIMNGFACE_HUB_REPO_NAME=meta-llama/Llama-3.2-3B
 huggingface-cli login
 huggingface-cli download $HUGGIMNGFACE_HUB_REPO_NAME --local-dir $HUGGIMNGFACE_HUB_REPO_NAME
