@@ -1,0 +1,46 @@
+Bootstrap: docker
+From: nvcr.io/nvidia/pytorch:24.04-py3
+Stage: spython-base
+
+%files
+requirements.txt /setup_dir/requirements.txt
+entrypoint.sh /setup_dir/entrypoint.sh
+%post
+. /.singularity.d/env/10-docker2singularity.sh
+
+
+export TZ="Asia/Tokyo"
+export DEBIAN_FRONTEND="noninteractive"
+export HOME=/container_home
+
+
+
+cd /setup_dir
+mkdir $HOME && mkdir -p /setup_dir/.zsh/ && \
+cd /setup_dir/.zsh && \
+git clone https://github.com/zsh-users/zsh-autosuggestions.git
+
+apt update && apt install -y \
+zsh \
+tzdata \
+jsonnet \
+libaio-dev \
+git-lfs
+
+wget https://github.com/glotlabs/gdrive/releases/download/3.9.0/gdrive_linux-x64.tar.gz && tar -xvf gdrive_linux-x64.tar.gz && mv ./gdrive /usr/local/bin/gdrive && rm -rf gdrive_linux-x64.tar.gz
+
+
+pip install --upgrade pip==24.1.2 && pip install -r /setup_dir/requirements.txt
+
+
+chmod -R 777 /setup_dir
+%environment
+export HOME=/container_home
+export DEBIAN_FRONTEND="noninteractive"
+export TZ="Asia/Tokyo"
+%runscript
+cd /setup_dir
+exec zsh /setup_dir/entrypoint.sh "$@"
+%startscript
+cd /setup_dir
+exec zsh /setup_dir/entrypoint.sh "$@"

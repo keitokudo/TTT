@@ -1,1 +1,74 @@
-* Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Step Reasoning
+#+TITLE: Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Step Reasoning
+
+* Overview
+In this repository, we provide the source code and instructions to reproduce the experiments for our paper submitted to ACL Rolling Review February 2024.
+
+This document outlines the steps to build a container, generate datasets, and obtain hidden states for our multi-step reasoning experiments using large language models (LLMs).
+
+** Hardware Requirements
+We recommend using **A100 80GB GPUs** to run all experiments. However, for most experiments (except those involving the Qwen2.5-14B, 32B, or Yi1.5-34B models), you can alternatively use **A100 40GB GPUs**.
+
+* Building the Container
+We use Singularity to build and run the container. Follow the steps below to set up your work directory and build the container.
+
+** Set Up Work Directory and Build
+#+BEGIN_SRC bash
+export WORK_DIR=/path/to/your/workdir
+cd container
+bash singularity_build.sh
+bash run.sh
+#+END_SRC
+
+* Generating Datasets
+Generate the datasets by executing the following commands:
+
+#+BEGIN_SRC bash
+export WANDB_API_KEY="your_wandb_api_key"
+cd /project/experiments/preprocess
+zsh env_setup.sh
+zsh ./scripts/all_formulas_prepro.sh
+#+END_SRC
+
+* Obtaining Hidden States
+In this example, we use the Llama-3.2-3B model to extract hidden states. (You can adapt these steps for other models by running the corresponding scripts in the `experiments` directory.)
+
+** Setting Up the Llama-3.2-3B Experiment
+Change to the experiment directory and set up the environment:
+
+#+BEGIN_SRC bash
+cd /project/experiments/Llama-3.2-3B
+zsh env_setup.sh
+#+END_SRC
+
+*** Downloading the Model
+Download the model from the Hugging Face model hub to your local directory (`/work/pretrained_lms`):
+
+#+BEGIN_SRC bash
+HUGGIMNGFACE_HUB_REPO_NAME=meta-llama/Llama-3.2-3B
+huggingface-cli login
+huggingface-cli download $HUGGIMNGFACE_HUB_REPO_NAME --local-dir $HUGGIMNGFACE_HUB_REPO_NAME
+#+END_SRC
+
+*** Tokenization
+Run the tokenization script:
+
+#+BEGIN_SRC bash
+cd /project/experiments/Llama-3.2-3B
+zsh ./scripts/all_prepro.sh
+#+END_SRC
+
+*** Inference
+Run the inference script:
+
+#+BEGIN_SRC bash
+zsh ./scripts/all_decode.sh
+#+END_SRC
+
+*** Probing
+Copy the labels file to the appropriate directory and run the probing script:
+
+#+BEGIN_SRC bash
+cp /project/experiments/preprocess/labels_0_9.json /work/datasets/labels/
+zsh ./scripts/all_probing.sh /work/experiment_results/Llama-3.2-3B_seed_42/logs
+#+END_SRC
+The output (probing results) will be saved in `/work/experiment_results/Llama-3.2-3B_seed_42/logs/linear_classifier_result_Llama-3.2-3B_seed_42_probing_train_1step_${CURRENT_TIME}_Llama-3.2-3B_seed_42_test_1step_20250210055616.jsonl`
