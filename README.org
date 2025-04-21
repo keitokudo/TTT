@@ -1,7 +1,7 @@
-#+TITLE: Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Step Reasoning
+#+TITLE: Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Step Arithmetic Reasoning
 
 * Overview
-In this repository, we provide the source code and instructions to reproduce the experiments for our paper submitted to ACL Rolling Review February 2024.
+In this repository, we provide the source code and instructions to reproduce the experiments for our pape.
 
 This document outlines the steps to build a container, generate datasets, and obtain hidden states for our multi-step reasoning experiments using large language models (LLMs).
 

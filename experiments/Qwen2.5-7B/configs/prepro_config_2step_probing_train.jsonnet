@@ -7,7 +7,7 @@ local DATASET_DIR_NAME = "preprocess";
 
 prepro_test_config + {
   split:: "probing_train_2step",
-  corpus_path: "/work/datasets/%s/raw/%s/dataset_subset.jsonl" % [
+  corpus_path: "/work/datasets/%s/raw/%s/dataset.jsonl" % [
     DATASET_DIR_NAME,
     self.split,
   ],

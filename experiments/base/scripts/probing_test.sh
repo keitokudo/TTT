@@ -19,7 +19,7 @@ python /project/src/scripts/hidden_states_probing.py \
        -e accuracy \
        -i \
        --model_load_path $MODEL_LOAD_PATH \
-       -g 0 \
+       -g 0 1 2 3 0 1 2 3 0 \
        --label_map_path /work/datasets/labels/labels_0_9.json \
        --n_epoch 10000 \
        --n_layer 1 \
