@@ -143,6 +143,10 @@ class LanguageModelPL(pl.LightningModule):
         parser.add_argument("--save_hideen_states_bf16", action="store_true")
         parser.add_argument("--pad_token_id", type=int)
         parser.add_argument("--shift_size", type=int)
+        parser.add_argument("--source_key", type=str, default="source")
+        parser.add_argument("--gold_key", type=str)
+        parser.add_argument("--suffix_match_eval", action="store_true")
+        parser.add_argument("--gold_char_index", type=str)
         return parser
     
     def __init__(self, config):
@@ -158,6 +162,7 @@ class LanguageModelPL(pl.LightningModule):
         )
         self.tokenizer.padding_side = "left"
         assert not (self.hparams.freeze_all_embeddings and self.model_config.tie_word_embeddings), "freeze_all_embeddings is not available with tie_word_embeddings"
+        assert not (self.hparams.suffix_match_eval and self.hparams.gold_char_index is not None), "suffix_match_eval and gold_char_index cannot be specified at the same time"
         
     def configure_model(self):
         self.model_config = AutoConfig.from_pretrained(
@@ -588,8 +593,11 @@ class LanguageModelPL(pl.LightningModule):
             with corpus_path.open(mode="r") as f:
                 for line in f:
                     data = json.loads(line)
-                    sources.append(data["source"])
-                    if "scratchpad" in data:
+                    sources.append(data[self.hparams.source_key])
+
+                    if self.hparams.gold_key is not None:
+                        golds.append(data[self.hparams.gold_key])
+                    elif "scratchpad" in data:
                         golds.append(data["scratchpad"].strip())
                     else:
                         golds.append(data["original_answer"].strip())
@@ -622,11 +630,30 @@ class LanguageModelPL(pl.LightningModule):
                 output_json["result"][data["id"]]["gold"] = gold
                 output_json["result"][data["id"]]["source"] = source
                 
-                if data["hyp_text"].replace(" ", "") == gold.replace(" ", ""):
-                    correct_count += 1
-                    output_json["result"][data["id"]]["correct"] = True
+                if self.hparams.suffix_match_eval:
+                    if gold.replace(" ", "").endswith(data["hyp_text"].replace(" ", "")):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
+                elif self.hparams.gold_char_index is not None:
+                    try:
+                        sl_or_index = int(self.hparams.gold_char_index)
+                    except ValueError:
+                        start, stop = map(int, self.hparams.gold_char_index.split(":"))
+                        sl_or_index = slice(start, stop)
+                    
+                    if gold[sl_or_index].replace(" ", "") == data["hyp_text"].replace(" ", ""):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
                 else:
-                    output_json["result"][data["id"]]["correct"] = False
+                    if data["hyp_text"].replace(" ", "") == gold.replace(" ", ""):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
                     
             output_json["accuracy"] = correct_count / len(all_data)
             self.log("test_accuracy", output_json["accuracy"])

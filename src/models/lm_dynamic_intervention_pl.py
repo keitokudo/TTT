@@ -188,32 +188,37 @@ class LanguageModelDynamicInterventionPL(LanguageModelPL):
         input_part_hidden_states = torch.stack(
             output.hidden_states
         ).transpose(0, 1).cpu()
+
+
         
-        output = self.model.generate(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            past_key_values=past_key_values,
-            num_beams=self.hparams.num_beams,
-            do_sample=False,
-            min_length=0,
-            max_length=max_length,
-            max_new_tokens=self.hparams.max_new_tokens,
-            num_beam_groups=1,
-            no_repeat_ngram_size=self.hparams.no_repeat_ngram_size,
-            encoder_no_repeat_ngram_size=0,
-            length_penalty=self.hparams.length_penalty,
-            eos_token_id=self.eos_token_id,
-            return_dict_in_generate=True,
-            output_hidden_states=True,
-            output_attentions=self.hparams.save_attention,
-            use_cache=True,
-        )
-        
-        # hidden_states: (num_layers, batch_size, seq_len, dim)
-        hidden_states = self.reorder_hidden_states(output.hidden_states).cpu()
-        hidden_states = torch.cat((input_part_hidden_states, hidden_states), dim=2)
-        # base_decoded_ids = torch.cat((batch["base_input_ids"], output.sequences), dim=-1)
-        base_decoded_ids = output.sequences[:, self.prompt_ids.size(-1):]
+        max_new_tokens = self.hparams.max_new_tokens -  1 if self.hparams.max_new_tokens is not None else None
+        if max_new_tokens is None or max_new_tokens > 0:
+            output = self.model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                num_beams=self.hparams.num_beams,
+                do_sample=False,
+                min_length=0,
+                max_length=max_length,
+                max_new_tokens=max_new_tokens,
+                num_beam_groups=1,
+                no_repeat_ngram_size=self.hparams.no_repeat_ngram_size,
+                encoder_no_repeat_ngram_size=0,
+                length_penalty=self.hparams.length_penalty,
+                eos_token_id=self.eos_token_id,
+                return_dict_in_generate=True,
+                output_hidden_states=True,
+                output_attentions=self.hparams.save_attention,
+                use_cache=True,
+            )
+            # hidden_states: (num_layers, batch_size, seq_len, dim)
+            hidden_states = self.reorder_hidden_states(output.hidden_states).cpu()
+            hidden_states = torch.cat((input_part_hidden_states, hidden_states), dim=2)
+            base_decoded_ids = output.sequences[:, self.prompt_ids.size(-1):]
+        else:
+            hidden_states = input_part_hidden_states
+            base_decoded_ids = input_ids[:, self.prompt_ids.size(-1):]
         
         # Set activation patch
         self.set_activation_patch(hidden_states.permute(1, 2, 0, 3))
@@ -256,36 +261,40 @@ class LanguageModelDynamicInterventionPL(LanguageModelPL):
                 output.hidden_states
             ).transpose(0, 1).cpu()
             
+            max_new_tokens = self.hparams.max_new_tokens -  1 if self.hparams.max_new_tokens is not None else None
             self.model.disable_activation_patch()
-            output = self.model.generate(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                past_key_values=past_key_values,
-                num_beams=self.hparams.num_beams,
-                do_sample=False,
-                min_length=0,
-                max_length=max_length,
-                max_new_tokens=self.hparams.max_new_tokens,
-                num_beam_groups=1,
-                no_repeat_ngram_size=self.hparams.no_repeat_ngram_size,
-                encoder_no_repeat_ngram_size=0,
-                length_penalty=self.hparams.length_penalty,
-                eos_token_id=self.eos_token_id,
-                return_dict_in_generate=True,
-                output_hidden_states=True,
-                output_attentions=self.hparams.save_attention,
-                use_cache=True,
-            )
-            
-            if self.hparams.save_attention:
-                attentions = output.attentions
-                raise NotImplementedError("Not implemented yet")
-            
-            hidden_states = self.reorder_hidden_states(output.hidden_states).cpu()
-            
-            hidden_states = torch.cat((input_part_hidden_states, hidden_states), dim=2)
-            decoded_ids = output.sequences[:, self.prompt_ids.size(-1):]
-            
+            if max_new_tokens is None or max_new_tokens > 0:
+                output = self.model.generate(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    past_key_values=past_key_values,
+                    num_beams=self.hparams.num_beams,
+                    do_sample=False,
+                    min_length=0,
+                    max_length=max_length,
+                    max_new_tokens=max_new_tokens,
+                    num_beam_groups=1,
+                    no_repeat_ngram_size=self.hparams.no_repeat_ngram_size,
+                    encoder_no_repeat_ngram_size=0,
+                    length_penalty=self.hparams.length_penalty,
+                    eos_token_id=self.eos_token_id,
+                    return_dict_in_generate=True,
+                    output_hidden_states=True,
+                    output_attentions=self.hparams.save_attention,
+                    use_cache=True,
+                )
+
+                if self.hparams.save_attention:
+                    raise NotImplementedError("Not implemented yet")
+
+                hidden_states = self.reorder_hidden_states(output.hidden_states).cpu()
+
+                hidden_states = torch.cat((input_part_hidden_states, hidden_states), dim=2)
+                decoded_ids = output.sequences[:, self.prompt_ids.size(-1):]
+            else:
+                hidden_states = input_part_hidden_states
+                decoded_ids = input_ids[:, self.prompt_ids.size(-1):]
+                
             if attention_mask is None:
                 attention_mask = [None] * len(batch["input_ids"])
             else:
@@ -509,23 +518,66 @@ class LanguageModelDynamicInterventionPL(LanguageModelPL):
                 output_json["result"][data["id"]]["source"] = source
                 output_json["result"][data["id"]]["base_source"] = base_source
                 
-                if data["base_hyp_text"].replace(" ", "") == base_gold.replace(" ", ""):
-                    base_correct_count += 1
-                    output_json["result"][data["id"]]["base_correct"] = True
-                else:
-                    output_json["result"][data["id"]]["base_correct"] = False
+                if self.hparams.suffix_match_eval:
+                    if base_gold.replace(" ", "").endswith(data["base_hyp_text"].replace(" ", "")):
+                        base_correct_count += 1
+                        output_json["result"][data["id"]]["base_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["base_correct"] = False
 
-                if data["hyp_text"].replace(" ", "") == gold.replace(" ", ""):
-                    correct_count += 1
-                    output_json["result"][data["id"]]["correct"] = True
+                    if gold.replace(" ", "").endswith(data["hyp_text"].replace(" ", "")):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
+
+                    if base_gold.replace(" ", "").endswith(data["hyp_text"].replace(" ", "")):
+                        intervention_correct_count += 1
+                        output_json["result"][data["id"]]["intervention_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["intervention_correct"] = False
+                elif self.hparams.gold_char_index is not None:
+                    try:
+                        sl_or_index = int(self.hparams.gold_char_index)
+                    except ValueError:
+                        start, stop = map(int, self.hparams.gold_char_index.split(":"))
+                        sl_or_index = slice(start, stop)
+                        
+                    if base_gold[sl_or_index].replace(" ", "") == data["base_hyp_text"].replace(" ", ""):
+                        base_correct_count += 1
+                        output_json["result"][data["id"]]["base_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["base_correct"] = False
+
+                    if gold[sl_or_index].replace(" ", "") == data["hyp_text"].replace(" ", ""):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
+
+                    if base_gold[sl_or_index].replace(" ", "") == data["hyp_text"].replace(" ", ""):
+                        intervention_correct_count += 1
+                        output_json["result"][data["id"]]["intervention_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["intervention_correct"] = False
                 else:
-                    output_json["result"][data["id"]]["correct"] = False
-                    
-                if data["hyp_text"].replace(" ", "") == base_gold.replace(" ", ""):
-                    intervention_correct_count += 1
-                    output_json["result"][data["id"]]["intervention_correct"] = True
-                else:
-                    output_json["result"][data["id"]]["intervention_correct"] = False
+                    if data["base_hyp_text"].replace(" ", "") == base_gold.replace(" ", ""):
+                        base_correct_count += 1
+                        output_json["result"][data["id"]]["base_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["base_correct"] = False
+
+                    if data["hyp_text"].replace(" ", "") == gold.replace(" ", ""):
+                        correct_count += 1
+                        output_json["result"][data["id"]]["correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["correct"] = False
+
+                    if data["hyp_text"].replace(" ", "") == base_gold.replace(" ", ""):
+                        intervention_correct_count += 1
+                        output_json["result"][data["id"]]["intervention_correct"] = True
+                    else:
+                        output_json["result"][data["id"]]["intervention_correct"] = False
             
                     
             output_json["base_accuracy"] = base_correct_count / len(all_data)
@@ -534,6 +586,13 @@ class LanguageModelDynamicInterventionPL(LanguageModelPL):
             self.log("test_accuracy", output_json["accuracy"])
             output_json["intervention_accuracy"] = intervention_correct_count / len(all_data)
             self.log("test_intervention_accuracy", output_json["intervention_accuracy"])
+
+            output_json["patch_config"] = {
+                "patch_start_position": self.hparams.patch_start_position,
+                "patch_end_position": self.hparams.patch_end_position,
+                "patch_start_layer": self.hparams.patch_start_layer,
+                "patch_end_layer": self.hparams.patch_end_layer,
+            }
             
             # Save result
             versions = self.hparams.version.replace("/", "_")

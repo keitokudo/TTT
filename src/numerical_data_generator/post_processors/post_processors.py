@@ -15,17 +15,6 @@ class EditSecondFormulaNumber(PostProcessorBase):
     def __init__(self, **kwargs):
         self.random_module = random.Random(kwargs["seed"])
         
-    def insertion(self, rang1, rang2):
-        return (
-            max(rang1[0], rang2[0]),
-            min(rang1[1], rang2[1])
-        )
-
-    def flip(self, rang):
-        return (
-            -1 * rang[1],
-            -1 * rang[0]
-        )
     
     def __call__(self, operator_config, assignment_configs):
         success = True
@@ -66,23 +55,59 @@ class EditSecondFormulaNumber(PostProcessorBase):
         assignment_configs[0]["format"][1] = str(change_number)
         return operator_config, assignment_configs, success
 
+class EditFirstFormulaNumber(PostProcessorBase):
+    def __init__(self, **kwargs):
+        self.random_module = random.Random(kwargs["seed"])
+        self.func_map = {
+            "Add": lambda x, y: x + y,
+            "Sub": lambda x, y: x - y,
+        }
+        
+
+    def compute(self, func_name, operand1, operand2):
+        return self.func_map[func_name](operand1, operand2)
     
+    def __call__(self, operator_config, assignment_configs):
+        success = True
+        
+        second_formula_ans = self.compute(
+            assignment_configs[1]["type"],
+            int(assignment_configs[0]["format"][0]),
+            int(assignment_configs[0]["format"][1])
+        )
+
+        if assignment_configs[1]["type"] == "Add":
+            formula2_boundary = (
+                0 - second_formula_ans,
+                9 - second_formula_ans
+            )
+        if assignment_configs[1]["type"] == "Sub":
+            formula2_boundary = (
+                0 + second_formula_ans,
+                9 + second_formula_ans
+            )
+            
+        formula2_boundary = self.insertion(formula2_boundary, (0, 9))
+        candidates = set(range(formula2_boundary[0], formula2_boundary[1] + 1))
+        original_number = int(assignment_configs[1]["format"][0])
+        try:
+            candidates.remove(original_number)
+        except KeyError:
+            pass
+        if len(candidates) == 0:
+            success = False
+            return operator_config, assignment_configs, success
+        
+        change_number = self.random_module.choice(list(candidates))
+        assignment_configs[1]["format"][0] = str(change_number)
+        return operator_config, assignment_configs, success
+
     
-class EditSecondFormulaNumberWithDistractor(PostProcessorBase):
+
+class EditSecondFormulaNumberr(PostProcessorBase):
     def __init__(self, **kwargs):
         self.random_module = random.Random(kwargs["seed"])
         
-    def insertion(self, rang1, rang2):
-        return (
-            max(rang1[0], rang2[0]),
-            min(rang1[1], rang2[1])
-        )
-
-    def flip(self, rang):
-        return (
-            -1 * rang[1],
-            -1 * rang[0]
-        )
     
     def __call__(self, operator_config, assignment_configs):
         success = True
@@ -132,18 +157,6 @@ class EditFirstFormulaNumberWithDistractor(PostProcessorBase):
             "Sub": lambda x, y: x - y,
         }
         
-    def insertion(self, rang1, rang2):
-        return (
-            max(rang1[0], rang2[0]),
-            min(rang1[1], rang2[1])
-        )
-
-    def flip(self, rang):
-        return (
-            -1 * rang[1],
-            -1 * rang[0]
-        )
-
     def compute(self, func_name, operand1, operand2):
         return self.func_map[func_name](operand1, operand2)
     
@@ -180,4 +193,118 @@ class EditFirstFormulaNumberWithDistractor(PostProcessorBase):
         
         change_number = self.random_module.choice(list(candidates))
         assignment_configs[2]["format"][0] = str(change_number)
+        return operator_config, assignment_configs, success
+
+
+class EditFormulaNumberWithDistractor(PostProcessorBase):
+    def __init__(self, **kwargs):
+        self.random_module = random.Random(kwargs["seed"])
+        self.func_map = {
+            "Add": lambda x, y: x + y,
+            "Sub": lambda x, y: x - y,
+        }
+        
+    def compute(self, func_name, operand1, operand2):
+        return self.func_map[func_name](operand1, operand2)
+    
+    def __call__(self, operator_config, assignment_configs):
+        success = True
+        
+        second_formula_ans = self.compute(
+            assignment_configs[2]["type"],
+            int(assignment_configs[1]["format"][0]),
+            int(assignment_configs[1]["format"][1])
+        )
+
+        if assignment_configs[2]["type"] == "Add":
+            formula2_boundary = (
+                0 - second_formula_ans,
+                9 - second_formula_ans
+            )
+        if assignment_configs[2]["type"] == "Sub":
+            formula2_boundary = (
+                0 + second_formula_ans,
+                9 + second_formula_ans
+            )
+            
+        formula2_boundary = self.insertion(formula2_boundary, (0, 9))
+        candidates = set(range(formula2_boundary[0], formula2_boundary[1] + 1))
+        original_number = int(assignment_configs[2]["format"][0])
+        try:
+            candidates.remove(original_number)
+        except KeyError:
+            pass
+        if len(candidates) == 0:
+            success = False
+            return operator_config, assignment_configs, success
+        
+        change_number = self.random_module.choice(list(candidates))
+        assignment_configs[2]["format"][0] = str(change_number)
+        return operator_config, assignment_configs, success
+
+
+
+
+class Edit2RandomFormula(PostProcessorBase):
+    def __init__(self, **kwargs):
+        self.random_module = random.Random(kwargs["seed"])
+
+    def compute_answer(self, assignment_configs):
+        if assignment_configs[0]["type"] == "Sub":
+            formula2_turm1 = int(assignment_configs[0]["format"][0])
+            formula2_turm2 = int(assignment_configs[0]["format"][1])
+            formula2_ans= formula2_turm1 - formula2_turm2
+        elif assignment_configs[0]["type"] == "Add":
+            formula2_turm1 = int(assignment_configs[0]["format"][0])
+            formula2_turm2 = int(assignment_configs[0]["format"][1])
+            formula2_ans= formula2_turm1 + formula2_turm2
+        else:
+            raise ValueError(f"Unknown formula type: {assignment_configs[0]['type']}")
+
+        if assignment_configs[1]["type"] == "Sub":
+            formula1_turm1 = int(assignment_configs[1]["format"][0])
+            formula1_turm2 = formula2_ans
+            formula1_ans = formula1_turm1 - formula1_turm2
+        elif assignment_configs[1]["type"] == "Add":
+            formula1_turm1 = int(assignment_configs[1]["format"][0])
+            formula1_turm2 = formula2_ans
+            formula1_ans= formula1_turm1 + formula1_turm2
+        else:
+            raise ValueError(f"Unknown formula type: {assignment_configs[1]['type']}")
+        return formula1_ans
+    
+    def __call__(self, operator_config, assignment_configs):
+        success = True
+        formula1_original_ans = self.compute_answer(assignment_configs)
+        if formula1_original_ans < 0 or formula1_original_ans > 9:
+            success = False
+            return operator_config, assignment_configs, success
+        formula1_ans = formula1_original_ans
+        
+        while formula1_ans == formula1_original_ans:
+            if assignment_configs[0]["type"] == "Sub":
+                formula2_turm1 = self.random_module.randint(0, 9)
+                formula2_turm2 = self.random_module.randint(0, formula2_turm1)
+                formula2_ans= formula2_turm1 - formula2_turm2
+            elif assignment_configs[0]["type"] == "Add":
+                formula2_turm1 = self.random_module.randint(0, 9)
+                formula2_turm2 = self.random_module.randint(0, 9 - formula2_turm1)
+                formula2_ans= formula2_turm1 + formula2_turm2
+            else:
+                raise ValueError(f"Unknown formula type: {assignment_configs[0]['type']}")
+
+
+            if assignment_configs[1]["type"] == "Sub":
+                formula1_turm1 = self.random_module.randint(formula2_ans, 9)
+                formula1_ans = formula1_turm1 - formula2_ans
+                assert 0 <= formula1_ans <= 9
+            elif assignment_configs[1]["type"] == "Add":
+                formula1_turm1 = self.random_module.randint(0, 9 - formula2_ans)
+                formula1_ans = formula1_turm1 + formula2_ans
+                assert 0 <= formula1_ans <= 9
+            else:
+                raise ValueError(f"Unknown formula type: {assignment_configs[1]['type']}")
+            
+        assignment_configs[0]["format"] = [str(formula1_turm1), str(formula2_ans)]
+        assignment_configs[1]["format"][0] = str(formula2_turm1)
         return operator_config, assignment_configs, success

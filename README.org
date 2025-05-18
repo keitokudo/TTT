@@ -1,4 +1,4 @@
-#+TITLE: Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Step Arithmetic Reasoning
+#+TITLE: Think-to-Talk or Talk-to-Think? Contrasting First-Pass and Second-Pass Arithmetic Reasoning in LLMs
 
 * Overview
 In this repository, we provide the source code and instructions to reproduce the experiments for our pape.
@@ -29,7 +29,7 @@ zsh env_setup.sh
 zsh ./scripts/all_formulas_prepro.sh
 #+END_SRC
 
-* Obtaining Hidden States
+* Probing
 In this example, we use the Llama-3.2-3B model to extract hidden states. (You can adapt these steps for other models by running the corresponding scripts in the `experiments` directory.)
 
 ** Setting Up the Llama-3.2-3B Experiment
@@ -58,7 +58,7 @@ cd /project/experiments/Llama-3.2-3B
 zsh ./scripts/all_prepro.sh
 #+END_SRC
 
-*** Inference
+*** Inference (Collecting Hidden States)
 Run the inference script:
 
 #+BEGIN_SRC bash
@@ -72,4 +72,13 @@ Copy the labels file to the appropriate directory and run the probing script:
 cp /project/experiments/preprocess/labels_0_9.json /work/datasets/labels/
 zsh ./scripts/all_probing.sh /work/experiment_results/Llama-3.2-3B_seed_42/logs
 #+END_SRC
-The output (probing results) will be saved in `/work/experiment_results/Llama-3.2-3B_seed_42/logs/linear_classifier_result_Llama-3.2-3B_seed_42_probing_train_1step_${CURRENT_TIME}_Llama-3.2-3B_seed_42_test_1step_20250210055616.jsonl`
+The output (probing results) will be saved in ~/work/experiment_results/Llama-3.2-3B_seed_42/logs/linear_classifier_result_Llama-3.2-3B_seed_42_probing_train_1step_${CURRENT_TIME}_Llama-3.2-3B_seed_42_test_1step_${CURRENT_TIME}.jsonl~
+
+
+* Causal Intervention
+#+BEGIN_SRC bash
+cd /project/experiments/Qwen2.5-7B
+bash sliding_patching_last_answer.sh
+bash sliding_patching_last_5.sh
+bash sliding_patching_mid_5.sh
+#+END_SRC

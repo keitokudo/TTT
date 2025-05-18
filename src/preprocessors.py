@@ -619,12 +619,30 @@ class LMInstructTuningPreProcessor(LMPretrainPreProcessor):
             help="Specify shift_size",
             type=int,
         )
+        parser.add_argument(
+            "--source_key",
+            help="Specify source_key",
+            type=str,
+            default="source",
+        )
+        parser.add_argument(
+            "--target_key",
+            help="Specify target_key",
+            type=str,
+            default="target",
+        )
+        parser.add_argument(
+            "--few_shot_context_key",
+            help="Specify few_shot_context_key",
+            type=str,
+            default="few_shot_context",
+        )
 
     def __init__(self, args):
         super().__init__(args)
         if args.shift_size is not None:
-            assert args.shift_size > 0, "shift_size must be greater than 0"
-
+            assert args.shift_size >= 0, "shift_size must be greater than 0"
+            
         # assert self.tokenizer.eos_token_id is not None
         # assert self.tokenizer.bos_token_id is not None
         
@@ -633,21 +651,20 @@ class LMInstructTuningPreProcessor(LMPretrainPreProcessor):
         for line in ChunkLineIterator(file_buffer, start_offset, end_offset):
             data = json_parser.parse(line)
             source_ids = self.tokenizer.encode(
-                data.at_pointer("/source"),
+                data.at_pointer(f"/{self.args.source_key}"),
                 padding=False,
                 truncation=False,
                 add_special_tokens=False,
             )
             target_ids = self.tokenizer.encode(
-                data.at_pointer("/target"),
+                data.at_pointer(f"/{self.args.target_key}"),
                 padding=False,
                 truncation=False,
                 add_special_tokens=False,
             )
-            
             if self.args.with_few_shot_contexts:
                 prompt_ids = self.tokenizer.encode(
-                    data.at_pointer("/few_shot_context"),
+                    data.at_pointer(f"/{self.args.few_shot_context_key}"),
                     padding=False,
                     truncation=False,
                     add_special_tokens=False,

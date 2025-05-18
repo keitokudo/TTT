@@ -6,3 +6,14 @@ class PostProcessorBase:
         raise NotImplementedError
 
 
+    def insertion(self, rang1, rang2):
+        return (
+            max(rang1[0], rang2[0]),
+            min(rang1[1], rang2[1])
+        )
+
+    def flip(self, rang):
+        return (
+            -1 * rang[1],
+            -1 * rang[0]
+        )
