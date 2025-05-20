@@ -1,4 +1,4 @@
-#+TITLE: Think-to-Talk or Talk-to-Think? Contrasting First-Pass and Second-Pass Arithmetic Reasoning in LLMs
+#+TITLE: Think-to-Talk or Talk-to-Think? When LLMs Come Up with an Answer in Multi-Hop Arithmetic Reasoning
 
 * Overview
 In this repository, we provide the source code and instructions to reproduce the experiments for our pape.

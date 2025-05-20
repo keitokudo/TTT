@@ -32,6 +32,6 @@ for equation_id in $(seq 0 $((NUM_EQUATIONS - 1))); do
 	export PATCH_END_LAYER=$((layer_id + 3))
 	
 	zsh ./scripts/test_sliding.sh \
-	    ./configs/decode_test_2step_random_edit_teacher_force_sliding_eq_0_config.jsonnet 0 1 2
+	    ./configs/decode_test_2step_random_edit_teacher_force_sliding_eq_0_config.jsonnet 0 1 2 3
     done
 done
